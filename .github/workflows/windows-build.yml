@@ -1,0 +1,67 @@
+name: Windows Build (CI)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyflakes
+
+      - name: Validate source (compile all modules)
+        run: |
+          python -c "import py_compile, glob; [py_compile.compile(f, doraise=True) for f in glob.glob('*.py')]; print('COMPILE OK')"
+
+      - name: Static analysis (pyflakes)
+        run: python -m pyflakes *.py
+        continue-on-error: true
+
+      - name: Run automated tests
+        run: python test_conversation.py
+
+      - name: Build Windows EXE (onefile)
+        run: |
+          pip install pyinstaller
+          pyinstaller --onefile --name Asif --console asif.py --noconfirm
+
+      - name: Verify artifact
+        run: |
+          if (!(Test-Path "dist/Asif.exe")) { throw "EXE build failed" }
+          $h = (Get-FileHash "dist/Asif.exe" -Algorithm SHA256).Hash
+          "Asif.exe SHA-256: $h" | Out-File -FilePath build_sha256.txt
+          Get-Content build_sha256.txt
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AVA-Windows-Build
+          path: |
+            dist/Asif.exe
+            build_sha256.txt
+          retention-days: 14

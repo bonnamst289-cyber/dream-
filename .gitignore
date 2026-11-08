@@ -1,0 +1,48 @@
+# ===== গোপন তথ্য (কখনো commit নয়!) =====
+asif_key.txt
+ava_key*.txt
+ava_db_credentials.bin
+release_signing.key
+release_signing.key.*
+my_token.txt
+maytoken.txt
+token.txt
+*.token
+ava_remote_token.json
+ava_remote_pair.json
+ava_update_source.json
+
+# ===== ব্যবহারকারীর ব্যক্তিগত ডেটা/মেমরি =====
+ava_memory.json
+asif_memory.json
+ava_identity.json
+ava_reminders.json
+ava_knowledge.json
+ava_locations.json
+ava_corrections.json
+ava_remote_audit.jsonl
+ava_terminal_audit.jsonl
+ava_update_log.txt
+ava_db_*backup*.sql
+backups/
+releases/
+update_staging/
+dist/
+build/
+
+# ===== টেম্প/লগ =====
+__pycache__/
+*.pyc
+*.log
+remote_bot_out.log
+remote_bot_err.log
+tmp_*.txt
+demo_desktop/
+test_area/
+.ava_backup/
+.ava_backup*/
+
+# ===== অন্যান্য =====
+*.spec
+.vscode/
+.idea/

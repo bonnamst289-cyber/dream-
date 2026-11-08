@@ -1,0 +1,16 @@
+{
+  "active_project": {
+    "name": "স্কুল",
+    "path": ""
+  },
+  "active_module": "database",
+  "active_file": null,
+  "last_instruction": "স্কুল প্রজেক্টে কাজ করো, কিন্তু Database ব্যবহার করো না।",
+  "last_result": "",
+  "last_task": null,
+  "constraints": [
+    "স্কুল প্রজেক্টে কাজ করো, কিন্তু Database ব্যবহার করো না।"
+  ],
+  "pending_question": null,
+  "updated": "2026-11-08T07:39:02"
+}

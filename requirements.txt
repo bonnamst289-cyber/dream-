@@ -1,0 +1,8 @@
+SpeechRecognition
+sounddevice
+numpy
+edge-tts
+gTTS
+requests
+pillow
+pymysql

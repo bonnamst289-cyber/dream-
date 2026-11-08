@@ -1,0 +1,105 @@
+name: Release (Windows EXE + Update Manifest)
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version (tag ছাড়া manual চালালে, যেমন 1.0.2)"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify tag matches ava_version.json
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}" -replace "^v", ""
+          $ver = (Get-Content "ava_version.json" | ConvertFrom-Json).version
+          if ($tag -ne $ver) { throw "Tag v$tag মেলে না ava_version.json ($ver) — release বাতিল" }
+          Write-Output "Version consistent: $tag"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run production tests
+        run: python test_conversation.py
+        continue-on-error: true
+
+      - name: Build Windows EXE
+        run: |
+          pip install pyinstaller
+          pyinstaller --onefile --name Asif --console asif.py --noconfirm
+          if (!(Test-Path "dist/Asif.exe")) { throw "Build failed — release বাতিল" }
+
+      - name: Generate manifest + signature (python — updater-সামঞ্জস্য)
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python scripts/generate_manifest.py "${{ github.ref_name }}"
+
+      - name: Verify signature present (unsigned publish নয়)
+        shell: pwsh
+        run: |
+          $m = Get-Content "release-manifest.json" | ConvertFrom-Json
+          if ([string]::IsNullOrWhiteSpace($m.signature)) { throw "Signature নেই — publish নয়" }
+          if ([string]::IsNullOrWhiteSpace($m.sha256)) { throw "SHA-256 নেই — publish নয়" }
+          Write-Output "Manifest verified: v$($m.version), sha=$($m.sha256.Substring(0,16))..."
+
+      - name: Rename update package
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          Copy-Item "dist/Asif.exe" "AVA-Update-$tag.exe"
+          Copy-Item "dist/Asif.exe" "AVA-Setup-$tag.exe"
+
+      - name: Generate release notes (কমিট থেকে — বানানো নয়)
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $log = git log --oneline -10
+          $body = @"
+          ## AVA Universal AI $tag
+          
+          ### IMPROVEMENTS / FIXES
+          $log
+          
+          ### UPDATE
+          - চালু AVA নিজেই এই release শনাক্ত করে আপডেট করবে (Auto Update Engine)
+          - Manifest: release-manifest.json (HMAC-SHA256 স্বাক্ষরিত)
+          
+          ### SHA-256
+          SHA256SUMS.txt দেখুন
+          "@
+          $body | Out-File "release-notes.md" -Encoding utf8
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "AVA Universal AI ${{ github.ref_name }}"
+          body_path: release-notes.md
+          files: |
+            AVA-Update-${{ github.ref_name }}.exe
+            AVA-Setup-${{ github.ref_name }}.exe
+            SHA256SUMS.txt
+            release-manifest.json
+            release-notes.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
